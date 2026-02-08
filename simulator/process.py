@@ -78,18 +78,26 @@ class Process:
         return self._remaining_burst == 0
 
     def complete_burst(self, executed_ticks: int):
-        """
-        Called when execution stops due to
-        preemption or burst completion.
-        """
+
+        """Called ONLY when a CPU burst actually completes."""
+
         self.cpu_burst_history.append(executed_ticks)
         self._remaining_burst = None
 
+    def record_preemption(self, executed_ticks: int):
+        """
+        Called when execution stops due to preemption.
+        """
+        self.cpu_burst_history.append(executed_ticks)
+
     def has_more_work(self) -> bool:
         """
-        Check if the process still has future CPU bursts.
+        Returns True if the process still needs CPU time.
         """
-        return len(self._cpu_bursts) > 0
+        return (
+                self._remaining_burst is not None
+                or len(self._cpu_bursts) > 0
+        )
 
     def terminate(self):
         """

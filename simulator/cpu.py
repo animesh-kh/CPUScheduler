@@ -72,7 +72,10 @@ class CPU:
         # ----------------------------
         # Burst accounting
         # ----------------------------
-        process.complete_burst(executed_ticks)
+        if process.is_burst_complete():
+            process.complete_burst(executed_ticks)
+        else:
+            process.record_preemption(executed_ticks)
 
         # ----------------------------
         # State transition

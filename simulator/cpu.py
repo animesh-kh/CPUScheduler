@@ -12,78 +12,96 @@ class CPU:
 
         self.current_process = None
         self.context_switches = 0
+        self.ticks_in_current_quantum = 0
 
     # ==================================================
-    # Core execution logic
+    # Core execution logic (tick-by-tick)
     # ==================================================
 
-    def run_one_cycle(self):
+    def run_one_tick(self):
         """
-        Run ONE scheduling + execution cycle.
+        Run ONE tick of execution.
+        This is called once per clock tick by the simulator.
         """
         # ----------------------------
-        # If no ready process → idle
+        # Step 1: Schedule if needed
         # ----------------------------
-        if self.ready_queue.is_empty():
-            # Idle CPU still advances time
+        if self.current_process is None and not self.ready_queue.is_empty():
+            self._schedule_next_process()
+
+        # ----------------------------
+        # Step 2: Execute current process (or idle)
+        # ----------------------------
+        if self.current_process is not None:
+            self._execute_one_tick()
+        else:
+            # CPU is idle - still advance clock
             self.clock.tick()
-            return
 
         # ----------------------------
-        # Scheduling decision
+        # Step 3: Increment waiting time for READY processes
         # ----------------------------
+        for p in self.ready_queue:
+            p.increment_waiting_time()
+
+    # ==================================================
+    # Internal helpers
+    # ==================================================
+
+    def _schedule_next_process(self):
+        """
+        Make a scheduling decision and dispatch the selected process.
+        """
+        # Ask scheduler to select a process
         process = self.scheduler.select_process(
             self.ready_queue,
             self.clock.now()
         )
 
-        # Remove selected process from ready queue
+        # Remove from ready queue
         self.ready_queue.remove(process)
 
+        # Context switch
         self.context_switches += 1
         self.current_process = process
+        self.ticks_in_current_quantum = 0
 
-        # ----------------------------
-        # Dispatch
-        # ----------------------------
+        # Dispatch to CPU
         process.start_execution(self.clock.now())
 
-        executed_ticks = 0
+    def _execute_one_tick(self):
+        """
+        Execute the current process for one tick and handle completion/preemption.
+        """
+        process = self.current_process
+
+        # Execute one tick
+        process.execute_one_tick()
+        self.ticks_in_current_quantum += 1
+
+        # Advance clock
+        self.clock.tick()
 
         # ----------------------------
-        # Execute (tick by tick)
+        # Check for completion or preemption
         # ----------------------------
-        while executed_ticks < self.time_quantum:
-            # Execute one CPU tick
-            process.execute_one_tick()
-            executed_ticks += 1
+        burst_complete = process.is_burst_complete()
+        quantum_expired = (self.ticks_in_current_quantum >= self.time_quantum)
 
-            # Advance system clock
-            self.clock.tick()
+        if burst_complete or quantum_expired:
+            # Record execution history
+            if burst_complete:
+                process.complete_burst(self.ticks_in_current_quantum)
+            else:
+                process.record_preemption(self.ticks_in_current_quantum)
 
-            # Increment waiting time for all READY processes
-            for p in self.ready_queue:
-                p.increment_waiting_time()
+            # State transition
+            if process.has_more_work():
+                process.state = ProcessState.READY
+                self.ready_queue.add(process)
+            else:
+                process.terminate()
 
-            # If CPU burst finished, stop execution
-            if process.is_burst_complete():
-                break
-
-        # ----------------------------
-        # Burst accounting
-        # ----------------------------
-        if process.is_burst_complete():
-            process.complete_burst(executed_ticks)
-        else:
-            process.record_preemption(executed_ticks)
-
-        # ----------------------------
-        # State transition
-        # ----------------------------
-        if process.has_more_work():
-            process.state = ProcessState.READY
-            self.ready_queue.add(process)
-        else:
-            process.terminate()
-
-        self.current_process = None
+            # Release CPU
+            self.current_process = None
+            self.ticks_in_current_quantum = 0

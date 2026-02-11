@@ -4,16 +4,13 @@ from simulator.ready_queue import ReadyQueue
 from simulator.cpu import CPU
 from simulator.simulator import Simulator
 from scheduler.fcfs import FCFSScheduler
-
+from simulator.manual_process_generator import ManualProcessGenerator
 
 # ----------------------------
 # Create core components
 # ----------------------------
 clock = SystemClock()
-generator = ProcessGenerator(
-    arrival_probability=1.0,  # force arrivals for testing
-    seed=1
-)
+generator = ManualProcessGenerator()
 ready_queue = ReadyQueue()
 
 scheduler = FCFSScheduler()
@@ -21,7 +18,7 @@ cpu = CPU(
     clock=clock,
     scheduler=scheduler,
     ready_queue=ready_queue,
-    time_quantum=100  # large quantum ≈ non-preemptive
+    time_quantum=1
 )
 
 simulator = Simulator(

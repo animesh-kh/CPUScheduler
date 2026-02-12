@@ -101,6 +101,7 @@ class CPU:
                 self.ready_queue.add(process)
             else:
                 process.terminate()
+                print(process)
 
             # Release CPU
             self.current_process = None

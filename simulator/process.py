@@ -125,5 +125,5 @@ class Process:
             f"Process(pid={self.pid}, "
             f"state={self.state.value}, "
             f"waiting={self.waiting_time}, "
-            f"cpu_used={self.total_cpu_time})"
+            f"cpu_used={self.cpu_burst_history})"
         )

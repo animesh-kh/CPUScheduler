@@ -1,48 +1,63 @@
-from simulator.clock import SystemClock
+# main.py  —  Example: run simulator with ML-powered SJF scheduler
+
+from simulator.clock           import SystemClock
+from simulator.process         import ProcessState
+from simulator.ready_queue     import ReadyQueue
+from simulator.cpu             import CPU
+from simulator.simulator       import Simulator
 from simulator.process_generator import ProcessGenerator
-from simulator.ready_queue import ReadyQueue
-from simulator.cpu import CPU
-from simulator.simulator import Simulator
-from scheduler.fcfs import FCFSScheduler
+
+from scheduler.sjf_ml_scheduler import SJFMLScheduler
 
 
-# ----------------------------
-# Create core components
-# ----------------------------
-clock = SystemClock()
-generator = ProcessGenerator(
-    arrival_probability=1.0,  # force arrivals for testing
-    seed=1
-)
-ready_queue = ReadyQueue()
+def main():
+    # ── Config ────────────────────────────────────────────
+    TIME_QUANTUM   = 100      # large quantum → near non-preemptive SJF
+    MAX_TIME       = 500
+    ARRIVAL_PROB   = 0.4
+    SEED           = 42
+    VERBOSE_ML     = True     # print prediction table each scheduling event
 
-scheduler = FCFSScheduler()
-cpu = CPU(
-    clock=clock,
-    scheduler=scheduler,
-    ready_queue=ready_queue,
-    time_quantum=100  # large quantum ≈ non-preemptive
-)
+    # ── Wire components ───────────────────────────────────
+    clock     = SystemClock()
+    scheduler = SJFMLScheduler(verbose=VERBOSE_ML)
+    rq        = ReadyQueue()
+    cpu       = CPU(clock, scheduler, rq, time_quantum=TIME_QUANTUM)
+    gen       = ProcessGenerator(
+                    arrival_probability=ARRIVAL_PROB,
+                    max_bursts=5,
+                    avg_burst_time=6,
+                    seed=SEED
+                )
 
-simulator = Simulator(
-    clock=clock,
-    process_generator=generator,
-    ready_queue=ready_queue,
-    cpu=cpu,
-    max_time=20
-)
+    sim = Simulator(clock, gen, rq, cpu, max_time=MAX_TIME)
 
-# ----------------------------
-# Run simulation
-# ----------------------------
-simulator.run()
+    # ── Run ───────────────────────────────────────────────
+    print("=" * 60)
+    print("  ML-Powered SJF Process Scheduling Simulator")
+    print("=" * 60)
 
-print("\nSimulation finished\n")
+    sim.run()
 
-for p in simulator.all_processes:
-    print(
-        f"PID={p.pid}, "
-        f"arrival={p.arrival_time}, "
-        f"waiting={p.waiting_time}, "
-        f"bursts={p.cpu_burst_history}"
-    )
+    # ── Summary ───────────────────────────────────────────
+    processes = sim.all_processes
+    terminated = [p for p in processes if p.state.value == "TERMINATED"]
+
+    print("\n" + "=" * 60)
+    print(f"  Simulation finished at t={clock.now()}")
+    print(f"  Total processes    : {len(processes)}")
+    print(f"  Completed          : {len(terminated)}")
+    print(f"  Context switches   : {cpu.context_switches}")
+
+    if terminated:
+        avg_wait = sum(p.waiting_time for p in terminated) / len(terminated)
+        avg_cpu  = sum(p.total_cpu_time for p in terminated) / len(terminated)
+        print(f"  Avg waiting time   : {avg_wait:.2f}")
+        print(f"  Avg CPU time used  : {avg_cpu:.2f}")
+
+    # ── ML model diagnostics ──────────────────────────────
+    scheduler.print_model_weights()
+
+
+if __name__ == "__main__":
+    main()

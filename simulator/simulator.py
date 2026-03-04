@@ -27,7 +27,7 @@ class Simulator:
     def run(self):
         while self.clock.now() < self.max_time:
             self._admit_new_processes()
-            self.cpu.run_one_cycle()
+            self.cpu.run_one_tick()
 
     # ==========================
     # Internal helpers

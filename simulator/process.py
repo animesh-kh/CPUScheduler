@@ -126,4 +126,5 @@ class Process:
             f"state={self.state.value}, "
             f"waiting={self.waiting_time}, "
             f"cpu_used={self.cpu_burst_history})"
+            f"arrival_time={self.arrival_time}, "
         )

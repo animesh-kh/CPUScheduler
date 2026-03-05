@@ -10,7 +10,7 @@ from simulator.manual_process_generator import ManualProcessGenerator
 # Create core components
 # ----------------------------
 clock = SystemClock()
-generator = ProcessGenerator(arrival_probability=0.1,seed=1)
+generator = ProcessGenerator(arrival_probability=1,seed=1)
 ready_queue = ReadyQueue()
 
 scheduler = FCFSScheduler()
@@ -26,7 +26,7 @@ simulator = Simulator(
     process_generator=generator,
     ready_queue=ready_queue,
     cpu=cpu,
-    max_time=9999999
+    max_time=99
 )
 
 # ----------------------------

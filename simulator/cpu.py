@@ -4,11 +4,21 @@ from simulator.process import ProcessState
 
 
 class CPU:
-    def __init__(self, clock, scheduler, ready_queue, time_quantum: int):
+    def __init__(self, clock, scheduler, ready_queue, time_quantum: int,
+                 data_collector=None):
+        """
+        Parameters
+        ----------
+        clock, scheduler, ready_queue, time_quantum : unchanged
+        data_collector : optional DataCollector instance.
+            If provided, one row is logged per scheduling decision.
+            If None (default), behaviour is identical to the original CPU.
+        """
         self.clock = clock
         self.scheduler = scheduler
         self.ready_queue = ready_queue
         self.time_quantum = time_quantum
+        self.data_collector = data_collector          # ← NEW (optional)
 
         self.current_process = None
         self.context_switches = 0
@@ -82,6 +92,18 @@ class CPU:
             self.ready_queue,
             self.clock.now()
         )
+
+        # ── DATA COLLECTION HOOK ──────────────────────────────────────
+        # Log BEFORE removing from queue so the full queue snapshot
+        # (including the selected process) is captured.
+        if self.data_collector is not None:
+            self.data_collector.record_decision(
+                current_time=self.clock.now(),
+                ready_queue=self.ready_queue,
+                selected_process=process,
+            )
+        # ─────────────────────────────────────────────────────────────
+
         self.ready_queue.remove(process)
 
         self.context_switches += 1

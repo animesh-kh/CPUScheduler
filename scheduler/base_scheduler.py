@@ -21,3 +21,13 @@ class Scheduler(ABC):
             Process: selected process
         """
         pass
+
+    def should_preempt(self, current_process, ready_queue) -> bool:
+        """
+        Return True if the current running process should be preempted
+        in favour of something in the ready queue.
+
+        Default: non-preemptive (never preempt).
+        Override in preemptive schedulers.
+        """
+        return False

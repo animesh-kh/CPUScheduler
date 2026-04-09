@@ -1,0 +1,81 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+\usecolortheme{whale}
+
+\title[RL for Resource Scheduling]{Reinforcement Learning for Adaptive Resource Scheduling}
+\subtitle{Based on Q-Learning in Complex System Environments}
+\author{Your Name}
+\institute{IIIT Guwahati}
+\date{\today}
+
+\begin{document}
+
+% Slide 1: Title
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Slide 2: Introduction & Motivation
+\begin{frame}{Introduction}
+    \begin{itemize}
+        \item \textbf{The Challenge:} Modern computing involves massive data volumes and dynamic workloads[cite: 10].
+        \item \textbf{Failure of Static Methods:} Traditional algorithms like Round-Robin and Priority Scheduling lack real-time adaptability[cite: 10, 20].
+        \item \textbf{Proposed Solution:} A model-free Q-learning algorithm that learns from system state changes to optimize resource allocation[cite: 9, 11].
+    \end{itemize}
+\end{frame}
+
+% Slide 3: Methodology - The Q-Learning Framework
+\begin{frame}{Methodology: System Modeling}
+    \begin{block}{State Space ($S_t$)}
+        Multidimensional vector: CPU utilization, memory usage, and task queue length[cite: 82, 83].
+    \end{block}
+    \begin{block}{Action Space ($a_t$)}
+        Scheduling strategies: Allocating more resources or adjusting task priority[cite: 84].
+    \end{block}
+    \begin{block}{Reward Function ($r_t$)}
+        Defined to minimize system strain:
+        $$r_t = -(CPU_t + Memory_t + QueueLength_t)$$
+        Ensures higher rewards for lower resource congestion[cite: 94, 96].
+    \end{block}
+\end{frame}
+
+% Slide 4: Algorithm Optimization
+\begin{frame}{Algorithm Stability \& Convergence}
+    To improve performance, the study implemented:
+    \begin{itemize}
+        \item \textbf{$\epsilon$-greedy Strategy:} Balances exploration of new strategies and exploitation of known optimal actions[cite: 99, 100].
+        \item \textbf{Experience Replay:} Stores transitions $(s_t, a_t, r_t, s_{t+1})$ in memory to reduce time correlation and stabilize learning[cite: 107, 108].
+        \item \textbf{Optimizers:} AdamW performed best due to its weight decay mechanism[cite: 189, 190].
+    \end{itemize}
+\end{frame}
+
+% Slide 5: Experimental Results
+\begin{frame}{Performance Comparison}
+    Tested on the \textbf{Google Cluster Data V2} dataset[cite: 115, 116].
+    \begin{table}
+        \centering
+        \begin{tabular}{|l|c|c|}
+            \hline
+            \textbf{Model} & \textbf{Completion Time (s)} & \textbf{Utilization (\%)} \\
+            \hline
+            Round-Robin & 150 & 65 \\
+            Priority Scheduling & 130 & 70 \\
+            DRA & 110 & 75 \\
+            DRL & 95 & 77 \\
+            \textbf{Q-Learning} & \textbf{80} & \textbf{79} \\
+            \hline
+        \end{tabular}
+        \caption{Comparison of Scheduling Models [cite: 142]}
+    \end{table}
+\end{frame}
+
+% Slide 6: Conclusion
+\begin{frame}{Conclusion}
+    \begin{itemize}
+        \item Q-learning outperformed both traditional and Deep Reinforcement Learning (DRL) models[cite: 156].
+        \item \textbf{Efficiency:} Achieved the shortest task completion time (80s)[cite: 156, 218].
+        \item \textbf{Future Scope:} Scalable for edge computing, cloud frameworks, and IoT systems[cite: 15, 39, 41].
+    \end{itemize}
+\end{frame}
+
+\end{document}

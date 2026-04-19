@@ -1,22 +1,4 @@
 # ml/q_trainer.py
-"""
-Q-Learning Trainer & Evaluator
-===============================
-Two public functions:
-
-    train(...)    — Run N simulation episodes with the same QLearningScheduler
-                    so the Q-table accumulates experience across episodes.
-                    Saves the policy to Pickle at the end.
-
-    evaluate(...) — Load the saved policy, run ONE greedy episode (ε=0),
-                    print a full metrics report and return the MetricsCollector.
-
-Typical usage (see main.py for a full example):
-
-    from ml.q_trainer import train, evaluate
-    train(episodes=100)
-    evaluate()
-"""
 
 from simulator.clock import SystemClock
 from simulator.process_generator import ProcessGenerator
@@ -39,35 +21,13 @@ def train(
     avg_burst_time: int = 5,
     policy_path: str = "ml/q_policy.pkl",
     base_seed: int = 0,
+    resume: bool = True,
     alpha: float = 0.1,
     gamma: float = 0.9,
     epsilon_decay: float = 0.995,
     log_every: int = 10,
 ) -> QLearningScheduler:
-    """
-    Train a Q-learning scheduler over multiple simulation episodes.
 
-    A *single* QLearningScheduler instance is reused across all episodes so
-    the Q-table grows continuously (warm-start between episodes).  Each
-    episode uses a different random seed so the agent sees varied workloads.
-
-    Parameters
-    ----------
-    episodes          : number of training simulation runs
-    max_time          : maximum clock ticks per episode
-    time_quantum      : CPU time quantum (passed to CPU)
-    arrival_probability: probability of a new process arriving each tick
-    avg_burst_time    : mean CPU burst length
-    policy_path       : where to save the Pickle policy
-    base_seed         : episode i uses seed = base_seed + i
-    alpha / gamma     : Q-learning hyper-parameters
-    epsilon_decay     : per-decision epsilon decay rate
-    log_every         : print a progress line every N episodes
-
-    Returns
-    -------
-    The trained QLearningScheduler (policy also saved to disk).
-    """
     print(f"\n{'='*55}")
     print(f"  Q-Learning Training")
     print(f"  Episodes={episodes}  max_time={max_time}  α={alpha}  γ={gamma}")
@@ -83,8 +43,14 @@ def train(
         training_mode=True,
     )
 
+    if resume:
+        try:
+            scheduler.load_policy()
+            print(f"  Resuming from existing policy (ε={scheduler.epsilon:.3f})")
+        except Exception:
+            print("  No existing policy found — starting fresh.")
+
     for ep in range(1, episodes + 1):
-        # Fresh simulation components each episode
         clock       = SystemClock()
         ready_queue = ReadyQueue()
         pg          = ProcessGenerator(
@@ -95,9 +61,13 @@ def train(
         cpu = CPU(clock, scheduler, ready_queue, time_quantum)
         sim = Simulator(clock, pg, ready_queue, cpu, max_time=max_time)
 
-        # Reset per-episode TD bookkeeping so episodes are independent
-        scheduler._prev_state  = None
-        scheduler._prev_reward = None
+        # ── Reset all per-episode memory ──────────────────────────────
+        # Prevents stale memory from the last decision of the previous
+        # episode polluting the first TD update of the new episode.
+        scheduler._prev_state         = None
+        scheduler._prev_selected_wait = 0.0
+        scheduler._prev_avg_wait      = 0.0
+        scheduler._prev_priority      = 0
 
         sim.run()
 
@@ -135,25 +105,14 @@ def evaluate(
     avg_burst_time: int = 5,
     seed: int = 9999,
 ) -> MetricsCollector:
-    """
-    Load the saved policy and run ONE fully-greedy episode (ε = 0).
 
-    Parameters
-    ----------
-    policy_path : Pickle file written by train()
-    seed        : use a seed NOT seen during training for a fair test
-
-    Returns
-    -------
-    MetricsCollector for the greedy episode (metrics already printed).
-    """
     print(f"\n{'='*55}")
     print(f"  Q-Learning Greedy Evaluation  (seed={seed})")
     print(f"{'='*55}")
 
     scheduler = QLearningScheduler(
         policy_path=policy_path,
-        training_mode=False,   # load policy, act greedy, no updates
+        training_mode=False,
     )
 
     clock       = SystemClock()

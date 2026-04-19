@@ -1,19 +1,4 @@
 # main.py
-"""
-CPU Scheduler Simulator — Main Entry Point
-==========================================
-
-Workflow
---------
-1. TRAIN  : Run the Q-learning agent over many episodes to build the policy.
-2. EVALUATE: Reload the policy and run one greedy episode.
-3. COMPARE: Benchmark Q-Learning vs FCFS vs Preemptive Priority on an
-            identical held-out workload.
-
-Usage
------
-    python main.py
-"""
 
 from simulator.clock import SystemClock
 from simulator.process_generator import ProcessGenerator
@@ -29,16 +14,17 @@ from scheduler.q_learning import QLearningScheduler
 from ml.q_trainer import train, evaluate
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Shared hyper-parameters — tweak here to affect all experiments
+# Shared hyper-parameters
 # ──────────────────────────────────────────────────────────────────────────────
 
-POLICY_PATH        = "ml/q_policy.pkl"
-TRAIN_EPISODES     = 100        # increase for a better policy (try 500+)
-MAX_TIME           = 500        # simulation ticks per episode
-TIME_QUANTUM       = 10         # RR-style quantum passed to CPU
-ARRIVAL_PROB       = 0.3        # probability of a new process per tick
-AVG_BURST          = 5          # mean CPU burst length (exponential dist)
-EVAL_SEED          = 9999       # held-out seed — not used during training
+POLICY_PATH    = "ml/q_policy.pkl"
+TRAIN_EPISODES = 500        # more episodes = Q-values converge more reliably
+EPSILON_DECAY  = 0.9998     # reaches ε=0.05 around episode 250
+MAX_TIME       = 500
+TIME_QUANTUM   = 10
+ARRIVAL_PROB   = 0.3
+AVG_BURST      = 5
+EVAL_SEED      = 9999
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -69,7 +55,7 @@ def _run_once(scheduler, scheduler_name: str, seed: int) -> dict:
 
 if __name__ == "__main__":
 
-    # ── Step 1: Train the Q-learning scheduler ────────────────────────────────
+    # ── Step 1: Train ─────────────────────────────────────────────────────────
     trained_scheduler = train(
         episodes=TRAIN_EPISODES,
         max_time=MAX_TIME,
@@ -78,10 +64,12 @@ if __name__ == "__main__":
         avg_burst_time=AVG_BURST,
         policy_path=POLICY_PATH,
         base_seed=0,
-        log_every=10,
+        resume=True,
+        epsilon_decay=EPSILON_DECAY,
+        log_every=50,
     )
 
-    # ── Step 2: Evaluate the saved greedy policy ──────────────────────────────
+    # ── Step 2: Evaluate greedy policy ────────────────────────────────────────
     evaluate(
         policy_path=POLICY_PATH,
         max_time=MAX_TIME,
@@ -91,22 +79,21 @@ if __name__ == "__main__":
         seed=EVAL_SEED,
     )
 
-    # ── Step 3: Compare all three schedulers on the same held-out workload ────
+    # ── Step 3: Compare all schedulers on the same held-out workload ──────────
     print("\n  Running comparison on held-out workload (seed=9999)...")
 
-    # Q-Learning — reload policy, act greedy
     ql_scheduler = QLearningScheduler(
         policy_path=POLICY_PATH,
         training_mode=False,
     )
 
     results = [
-        _run_once(FCFSScheduler(),               "FCFS",                  EVAL_SEED),
+        _run_once(FCFSScheduler(),                "FCFS",                  EVAL_SEED),
         _run_once(PreemptivePriorityScheduler(),  "Priority (Preemptive)", EVAL_SEED),
-        _run_once(ql_scheduler,                  "Q-Learning (Greedy)",   EVAL_SEED),
+        _run_once(ql_scheduler,                   "Q-Learning (Greedy)",   EVAL_SEED),
     ]
 
     compare_schedulers(results)
 
-    # ── Step 4 (optional): Inspect what the agent learned ─────────────────────
+    # ── Step 4: Inspect what the agent learned ────────────────────────────────
     trained_scheduler.print_q_table()
